@@ -1,0 +1,69 @@
+<a class="skip-link" href="#main-content">Saltar al contenido</a>
+<div class="app-shell app-shell--drawer">
+  @if (menuOpen()) {
+  <div class="drawer-backdrop" (click)="menuOpen.set(false)" aria-hidden="true"></div>
+  <aside id="main-navigation" class="sidebar" role="dialog" aria-modal="true" aria-label="Navegación principal" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (keydown)="onMenuKeydown($event)">
+    <div class="brand brand--sidebar">
+      <span class="brand__mark" aria-hidden="true">+</span>
+      <span><strong>ControlPlus</strong><small>Baratísimo</small></span>
+      <button type="button" class="icon-button icon-button--dark drawer-close" aria-label="Cerrar menú" (click)="menuOpen.set(false)" cdkFocusInitial><cp-icon name="close" /></button>
+    </div>
+    <p class="sidebar__label">NAVEGACIÓN</p>
+    <nav class="sidebar__nav">
+      <a routerLink="/operacion/ventas/nueva" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'ventas'" [attr.aria-current]="activeSection() === 'ventas' ? 'page' : null" aria-label="Punto de venta">
+        <span><cp-icon name="sales" /></span><b>Ventas</b>
+      </a>
+      <a routerLink="/operacion/caja/apertura" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'caja'" [attr.aria-current]="activeSection() === 'caja' ? 'page' : null" aria-label="Caja">
+        <span><cp-icon name="cash" /></span><b>Caja</b>
+      </a>
+      @if (state.cashOpen()) { <a routerLink="/operacion/caja/cierre" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'caja'" aria-label="Cierre de caja"><span><cp-icon name="cash" /></span><b>Cierre de caja</b></a> }
+      @if (state.user()?.role !== 'Cajero') {
+        <a routerLink="/operacion/dashboard" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'dashboard'" [attr.aria-current]="activeSection() === 'dashboard' ? 'page' : null" aria-label="Dashboard"><span><cp-icon name="dashboard" /></span><b>Dashboard</b></a>
+      }
+      <a routerLink="/operacion/catalogo" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'catalogo'" [attr.aria-current]="activeSection() === 'catalogo' ? 'page' : null" aria-label="Catálogo"><span><cp-icon name="catalog" /></span><b>Catálogo</b></a>
+      <a routerLink="/operacion/inventario" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'inventario'" [attr.aria-current]="activeSection() === 'inventario' ? 'page' : null" aria-label="Inventario"><span><cp-icon name="inventory" /></span><b>Inventario</b></a>
+      <a routerLink="/operacion/clientes" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'clientes'" [attr.aria-current]="activeSection() === 'clientes' ? 'page' : null" aria-label="Clientes"><span><cp-icon name="customers" /></span><b>Clientes</b></a>
+      <a routerLink="/operacion/creditos" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'creditos'" [attr.aria-current]="activeSection() === 'creditos' ? 'page' : null" aria-label="Créditos y abonos"><span><cp-icon name="cash" /></span><b>Créditos</b></a>
+      <a routerLink="/operacion/apartados" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'apartados'" [attr.aria-current]="activeSection() === 'apartados' ? 'page' : null" aria-label="Apartados"><span><cp-icon name="catalog" /></span><b>Apartados</b></a>
+      <a routerLink="/operacion/cambios" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'cambios'" [attr.aria-current]="activeSection() === 'cambios' ? 'page' : null" aria-label="Cambios"><span><cp-icon name="sales" /></span><b>Cambios</b></a>
+      <a routerLink="/operacion/historial" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'historial'" [attr.aria-current]="activeSection() === 'historial' ? 'page' : null" aria-label="Historial de ventas"><span><cp-icon name="reports" /></span><b>Historial</b></a>
+      @if (state.user()?.role !== 'Cajero') {
+        <a routerLink="/operacion/compras" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'compras'" [attr.aria-current]="activeSection() === 'compras' ? 'page' : null" aria-label="Compras"><span><cp-icon name="purchases" /></span><b>Compras</b></a>
+        <a routerLink="/operacion/recepciones" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'recepciones'" [attr.aria-current]="activeSection() === 'recepciones' ? 'page' : null" aria-label="Recepción de compras"><span><cp-icon name="purchases" /></span><b>Recepciones</b></a>
+        <a routerLink="/operacion/reportes" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'reportes'" [attr.aria-current]="activeSection() === 'reportes' ? 'page' : null" aria-label="Reportes"><span><cp-icon name="reports" /></span><b>Reportes</b></a>
+      }
+      <a routerLink="/operacion/turnos" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'turnos'" [attr.aria-current]="activeSection() === 'turnos' ? 'page' : null" aria-label="Operadores y turnos"><span><cp-icon name="lock" /></span><b>Operadores</b></a>
+      @if (state.user()?.role === 'Administrador') {
+        <a routerLink="/operacion/codigos-barras" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'barcodes'" [attr.aria-current]="activeSection() === 'barcodes' ? 'page' : null" aria-label="Códigos de barras"><span><cp-icon name="catalog" /></span><b>Códigos</b></a>
+      }
+      <a routerLink="/operacion/impresion" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'impresion'" [attr.aria-current]="activeSection() === 'impresion' ? 'page' : null" aria-label="Impresión"><span><cp-icon name="reports" /></span><b>Impresión</b></a>
+      @if (state.user()?.role === 'Administrador') { <a routerLink="/operacion/movimientos" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'movimientos'" [attr.aria-current]="activeSection() === 'movimientos' ? 'page' : null" aria-label="Movimientos de caja"><span><cp-icon name="cash" /></span><b>Movimientos</b></a> }
+      @if (state.user()?.role === 'Administrador') {
+        <a routerLink="/operacion/administracion" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'administracion'" [attr.aria-current]="activeSection() === 'administracion' ? 'page' : null" aria-label="Administración"><span><cp-icon name="settings" /></span><b>Administración</b></a>
+        <a routerLink="/operacion/configuracion" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'configuracion'" [attr.aria-current]="activeSection() === 'configuracion' ? 'page' : null" aria-label="Configuración"><span><cp-icon name="settings" /></span><b>Configuración</b></a>
+      }
+      @if (state.user()?.role !== 'Cajero') { <a routerLink="/operacion/soporte" (click)="menuOpen.set(false)" class="nav-item" [class.nav-item--active]="activeSection() === 'soporte'" [attr.aria-current]="activeSection() === 'soporte' ? 'page' : null" aria-label="Soporte"><span><cp-icon name="settings" /></span><b>Soporte</b></a> }
+    </nav>
+    <div class="sidebar__user">
+      <span class="avatar">{{ state.user()?.initials }}</span>
+      <span class="sidebar__user-copy"><strong>{{ state.user()?.name }}</strong><small>{{ state.user()?.role }}</small></span>
+    </div>
+  </aside>
+  }
+  <section class="shell-content" [attr.inert]="menuOpen() ? '' : null">
+    <header class="topbar">
+      <div class="topbar__leading">
+        <button class="icon-button menu-toggle" type="button" aria-label="Abrir menú" [attr.aria-expanded]="menuOpen()" [attr.aria-controls]="menuOpen() ? 'main-navigation' : null" (click)="menuOpen.set(true)"><cp-icon name="menu" /></button>
+        <div><h1>{{ pageTitle() }}</h1><p>{{ pageSubtitle() }}</p></div>
+      </div>
+      <div class="topbar__status">
+        <strong class="store-name">Baratísimo</strong>
+        <span class="server-status"><i></i>Servidor local disponible</span>
+        <span class="topbar__divider" aria-hidden="true"></span>
+        <span class="terminal"><strong>Caja 01</strong><small>{{ state.shiftMode() === 'COMPARTIDO' ? 'Turno compartido' : 'Turno individual' }}</small></span>
+        <button class="icon-button" type="button" title="Bloquear sesión · conserva el turno y el carrito" (click)="logout()" aria-label="Bloquear sesión"><cp-icon name="lock" /></button>
+      </div>
+    </header>
+    <main id="main-content" class="workspace" [class.workspace--bounded]="boundedWorkspace()" tabindex="-1"><router-outlet /></main>
+  </section>
+</div>

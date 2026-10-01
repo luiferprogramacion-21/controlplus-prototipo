@@ -1,0 +1,168 @@
+<section class="module-page">
+  <div class="module-heading">
+    <div class="module-heading__title">
+      <span class="module-heading__icon"><cp-icon [name]="current.icon" /></span>
+      <div>
+        <h2>{{ current.title }}</h2>
+        <p>{{ current.subtitle }}</p>
+      </div>
+    </div>
+    <button class="button button--primary" type="button" (click)="executeAction()">{{ current.action }}</button>
+  </div>
+
+  @if (feedback()) {
+    <div class="inline-feedback inline-feedback--success" role="status" aria-live="polite">
+      <span aria-hidden="true">✓</span>{{ feedback() }}
+      <button type="button" class="link-button" (click)="clearFeedback()">Cerrar</button>
+    </div>
+  }
+
+  @if (showForm()) {
+    <div class="module-form-sheet" role="dialog" aria-modal="true" aria-labelledby="module-form-title">
+      <div class="module-form-sheet__backdrop" (click)="closeForm()"></div>
+      <form class="panel panel--padded module-form" [class.module-form--wide]="module() === 'compras'" (ngSubmit)="submitForm()" #moduleForm="ngForm" novalidate>
+        <div class="panel-heading"><h2 id="module-form-title">{{ current.action }}</h2><p>{{ current.subtitle }}</p></div>
+        @switch (module()) {
+          @case ('catalogo') {
+            <label class="field-label" for="form-product-name">Nombre del producto</label><input id="form-product-name" class="text-field" name="productName" [(ngModel)]="formName" (input)="formName = $any($event.target).value" required autofocus />
+            <label class="field-label field-label--spaced" for="form-barcode-source">Código de barras</label>
+            <select id="form-barcode-source" class="text-field" name="barcodeSource" [(ngModel)]="formBarcodeSource">
+              <option value="AUTO">Generar automáticamente</option>
+              <option value="EXISTENTE">El producto ya tiene código</option>
+            </select>
+            @if (formBarcodeSource === 'EXISTENTE') {
+              <label class="field-label field-label--spaced" for="form-product-code">Escanear o escribir el código existente</label>
+              <input id="form-product-code" class="text-field" name="productCode" [(ngModel)]="formCode" required />
+            }
+            <div class="form-grid form-grid--two">
+              <div><label class="field-label field-label--spaced" for="form-product-category">Categoría</label><select id="form-product-category" class="text-field" name="productCategory" [(ngModel)]="formCategory"><option>Ropa</option><option>Calzado</option><option>Bisutería</option><option>Juguetería</option><option>Papelería</option><option>Ferretería</option><option>Cocina</option><option>Hogar</option></select></div>
+              <div><label class="field-label field-label--spaced" for="form-product-unit">Unidad de venta</label><select id="form-product-unit" class="text-field" name="productUnit" [(ngModel)]="formUnit"><option value="unidad">Unidad</option><option value="metro">Metro entero</option></select></div>
+              <div><label class="field-label field-label--spaced" for="form-product-price">Precio de venta</label><input id="form-product-price" class="text-field" type="number" min="1" step="1" name="productPrice" [(ngModel)]="formPrice" required /></div>
+              <div><label class="field-label field-label--spaced" for="form-product-stock">Existencia inicial <span>(número entero)</span></label><input id="form-product-stock" class="text-field" type="number" min="0" step="1" name="productStock" [(ngModel)]="formStock" required /></div>
+              <div><label class="field-label field-label--spaced" for="form-product-supplier">Proveedor del producto <span>(opcional)</span></label><select id="form-product-supplier" class="text-field" name="productSupplier" [(ngModel)]="formSupplier"><option value="">Sin proveedor asignado</option>@for (supplier of state.suppliers; track supplier) {<option [value]="supplier">{{ supplier }}</option>}</select></div>
+            </div>
+          }
+          @case ('inventario') {
+            <label class="field-label" for="form-inventory-product">Producto</label><select id="form-inventory-product" class="text-field" name="inventoryProduct" [(ngModel)]="formProductCode">@for (product of state.products; track product.id) {<option [value]="product.code">{{ product.name }} · {{ product.code }}</option>}</select>
+            <label class="field-label field-label--spaced" for="form-inventory-quantity">Cantidad del ajuste <span>(negativo retira, positivo agrega)</span></label><input id="form-inventory-quantity" class="text-field" type="number" step="1" name="inventoryQuantity" [(ngModel)]="formQuantity" placeholder="Ejemplo: -1" required />
+            <div class="adjustment-shortcuts"><button class="table-action" type="button" (click)="formQuantity = -1">Retirar 1</button><button class="table-action" type="button" (click)="formQuantity = 1">Agregar 1</button></div>
+          }
+          @case ('clientes') {
+            <label class="field-label" for="form-customer-name">Nombre completo o razón social</label><input id="form-customer-name" class="text-field" name="customerName" [(ngModel)]="formName" required autofocus />
+            <label class="field-label field-label--spaced" for="form-customer-document">Documento o NIT</label><input id="form-customer-document" class="text-field" name="customerDocument" [(ngModel)]="formDocument" required />
+            <label class="field-label field-label--spaced" for="form-customer-phone">Teléfono <span>(opcional)</span></label><input id="form-customer-phone" class="text-field" name="customerPhone" [(ngModel)]="formPhone" />
+            <label class="field-label field-label--spaced" for="form-customer-address">Dirección <span>(opcional)</span></label><input id="form-customer-address" class="text-field" name="customerAddress" [(ngModel)]="formAddress" />
+          }
+          @case ('compras') {
+            <label class="field-label" for="form-purchase-supplier">Proveedor</label><select id="form-purchase-supplier" class="text-field" name="purchaseSupplier" [(ngModel)]="formSupplier" (change)="loadOrderLines($any($event.target).value)" required autofocus>@for (supplier of state.suppliers; track supplier) {<option [value]="supplier">{{ supplier }}</option>}</select>
+            <div class="order-lines table-wrap">
+              <table>
+                <thead><tr><th class="selection-cell">Incluir</th><th>Producto</th><th class="align-right">Disponible</th><th class="align-right">Cantidad solicitada</th></tr></thead>
+                <tbody>
+                  @for (line of formOrderLines; track line.productCode; let index = $index) {
+                    <tr>
+                      <td class="selection-cell"><input type="checkbox" [(ngModel)]="line.selected" (change)="line.selected = $any($event.target).checked" [name]="'order-selected-' + index" [attr.aria-label]="'Incluir ' + line.productName" /></td>
+                      <td><strong>{{ line.productName }}</strong><small>{{ line.productCode }}</small></td>
+                      <td class="align-right numeric">{{ line.available }}</td>
+                      <td class="align-right"><input class="table-number-input" type="number" min="1" step="1" [(ngModel)]="line.quantity" [name]="'order-quantity-' + index" [disabled]="!line.selected" [attr.aria-label]="'Cantidad de ' + line.productName" /></td>
+                    </tr>
+                  } @empty { <tr class="empty-row"><td colspan="4">Este proveedor no tiene productos asignados.</td></tr> }
+                </tbody>
+              </table>
+            </div>
+          }
+          @case ('administracion') {
+            <label class="field-label" for="form-user-name">Nombre del usuario</label><input id="form-user-name" class="text-field" name="userName" [(ngModel)]="formName" required autofocus />
+            <label class="field-label field-label--spaced" for="form-user-login">Nombre de acceso</label><input id="form-user-login" class="text-field" name="userLogin" [(ngModel)]="formCode" required />
+            <label class="field-label field-label--spaced" for="form-user-role">Rol base</label><select id="form-user-role" class="text-field" name="userRole" [(ngModel)]="formRole"><option value="Cajero">Cajero</option><option value="Supervisor">Supervisor</option><option value="Administrador">Administrador</option></select>
+          }
+        }
+        @if (formError()) { <p class="field-error" role="alert">{{ formError() }}</p> }
+        <div class="form-actions"><button class="button button--secondary" type="button" (click)="closeForm()">Cancelar</button><button class="button button--primary" type="submit">Guardar</button></div>
+      </form>
+    </div>
+  }
+
+  @switch (module()) {
+    @case ('dashboard') {
+      <div class="metric-grid">
+        <article class="metric-card"><span>Ventas de hoy</span><strong>{{ dashboardSales }}</strong><small>Operaciones confirmadas</small></article>
+        <article class="metric-card"><span>Total vendido</span><strong>{{ format(dashboardTotal) }}</strong><small>Incluye IVA</small></article>
+        <article class="metric-card"><span>Existencias por revisar</span><strong>{{ lowStockCount }}</strong><small>Productos en nivel bajo</small></article>
+        <article class="metric-card"><span>Turno actual</span><strong>{{ state.cashOpen() ? 'Abierto' : 'Cerrado' }}</strong><small>{{ state.cashOwner()?.name ?? 'Sin responsable' }}</small></article>
+      </div>
+      <div class="module-columns">
+        <section class="panel panel--padded">
+          <div class="panel-heading"><h3>Accesos frecuentes</h3><p>Continúa una tarea operativa sin buscarla en el menú.</p></div>
+          <div class="quick-links">
+            <a class="quick-link" routerLink="/operacion/ventas/nueva"><cp-icon name="sales" /><span><strong>Nueva venta</strong><small>Escanear productos y cobrar</small></span></a>
+            <a class="quick-link" routerLink="/operacion/inventario"><cp-icon name="inventory" /><span><strong>Revisar existencias</strong><small>Ver productos bajo mínimo</small></span></a>
+            <a class="quick-link" routerLink="/operacion/compras"><cp-icon name="purchases" /><span><strong>Pedidos de compra</strong><small>Reponer productos agotados</small></span></a>
+            <a class="quick-link" routerLink="/operacion/creditos"><cp-icon name="cash" /><span><strong>Consultar créditos</strong><small>Registrar abonos de clientes</small></span></a>
+            <a class="quick-link" routerLink="/operacion/apartados"><cp-icon name="catalog" /><span><strong>Gestionar apartados</strong><small>Abonos, entregas y cancelaciones</small></span></a>
+          </div>
+        </section>
+        <section class="panel panel--padded">
+          <div class="panel-heading"><h3>Estado de la operación</h3><p>Información de la caja y de los servicios locales.</p></div>
+          <dl class="status-list module-status-list">
+            <div><dt>Servidor local</dt><dd class="success-text">Disponible</dd></div>
+            <div><dt>Base de datos</dt><dd class="success-text">Conectada</dd></div>
+            <div><dt>Último respaldo</dt><dd>Hoy · 09:30</dd></div>
+            <div><dt>Terminal</dt><dd>Caja 01</dd></div>
+          </dl>
+        </section>
+      </div>
+    }
+
+    @case ('catalogo') {
+      <section class="panel module-panel">
+        <div class="module-toolbar">
+          <div><h3>Productos</h3><p class="muted">Códigos, precios y unidades de venta.</p></div>
+          <div class="module-filters"><label class="sr-only" for="catalog-filter">Buscar producto</label><input id="catalog-filter" class="text-field" [value]="filter()" (input)="filter.set($any($event.target).value)" placeholder="Buscar por código, nombre o categoría" /></div>
+        </div>
+        <div class="table-wrap module-table-wrap">
+            <table><thead><tr><th>Código</th><th>Producto</th><th>Categoría</th><th>Unidad</th><th>Proveedor</th><th class="align-right">Precio</th><th class="align-right">Existencia</th><th>Estado</th></tr></thead>
+            <tbody>@for (product of catalogProducts(); track product.id) {<tr><td class="numeric">{{ product.code }}</td><td><strong>{{ product.name }}</strong></td><td>{{ product.category }}</td><td>{{ product.unit }}</td><td>{{ product.supplier ?? 'Sin proveedor' }}</td><td class="align-right numeric">{{ format(product.price) }}</td><td class="align-right numeric">{{ state.availableStock(product) }}</td><td><span class="status-pill" [class.status-pill--warning]="state.availableStock(product) <= 12">{{ state.availableStock(product) <= 12 ? 'Revisar' : 'Disponible' }}</span></td></tr>} @empty {<tr class="empty-row"><td colspan="8">No hay productos que coincidan con la búsqueda.</td></tr>}</tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    @case ('inventario') {
+      <div class="metric-grid metric-grid--three"><article class="metric-card"><span>Productos registrados</span><strong>{{ state.products.length }}</strong><small>Catálogo activo</small></article><article class="metric-card"><span>Unidades disponibles</span><strong>{{ state.products.reduce((sum, product) => sum + state.availableStock(product), 0) }}</strong><small>Existencia actual</small></article><article class="metric-card"><span>Valor estimado</span><strong>{{ format(totalInventoryValue) }}</strong><small>Precio de venta</small></article></div>
+      <section class="panel module-panel">
+        <div class="module-toolbar"><div><h3>Existencias</h3><p class="muted">Consulta rápida para detectar reposición.</p></div><div class="module-filters"><label class="sr-only" for="inventory-filter">Filtrar inventario</label><select id="inventory-filter" class="text-field" [value]="inventoryFilter()" (change)="inventoryFilter.set($any($event.target).value)"><option>Todos</option><option>Bajo mínimo</option><option>Sin existencias</option></select></div></div>
+        <div class="table-wrap module-table-wrap"><table><thead><tr><th>Producto</th><th>Categoría</th><th class="align-right">Disponible</th><th class="align-right">Mínimo</th><th>Estado</th><th>Último movimiento</th></tr></thead><tbody>@for (product of inventoryProducts(); track product.id) {<tr><td><strong>{{ product.name }}</strong><small>{{ product.code }} · {{ product.unit }}</small></td><td>{{ product.category }}</td><td class="align-right numeric">{{ state.availableStock(product) }}</td><td class="align-right numeric">12</td><td><span class="status-pill" [class.status-pill--warning]="state.availableStock(product) <= 12">{{ state.availableStock(product) <= 12 ? 'Bajo mínimo' : 'Normal' }}</span></td><td>07/09/2026 · 09:18</td></tr>} @empty {<tr class="empty-row"><td colspan="6">No hay existencias con ese filtro.</td></tr>}</tbody></table></div>
+      </section>
+    }
+
+    @case ('clientes') {
+      <section class="panel module-panel"><div class="module-toolbar"><div><h3>Directorio de clientes</h3><p class="muted">Consulta clientes y saldos antes de registrar una venta a crédito.</p></div><div class="module-filters"><label class="sr-only" for="customer-filter">Buscar cliente</label><input id="customer-filter" class="text-field" [value]="filter()" (input)="filter.set($any($event.target).value)" placeholder="Nombre, cédula, NIT o teléfono" /></div></div><div class="table-wrap module-table-wrap"><table><thead><tr><th>Cliente</th><th>Documento</th><th>Teléfono</th><th>Dirección</th><th class="align-right">Saldo</th><th>Estado</th><th class="align-right">Acciones</th></tr></thead><tbody>@for (customer of filteredCustomers; track customer.id) {<tr><td><strong>{{ customer.name }}</strong></td><td class="numeric">{{ customer.document }}</td><td>{{ customer.phone || '—' }}</td><td>{{ customer.address || '—' }}</td><td class="align-right numeric">{{ format(customer.balance) }}</td><td><span class="status-pill" [class.status-pill--warning]="customer.status === 'Con crédito'">{{ customer.status }}</span></td><td class="align-right"><button class="table-action" type="button" (click)="feedback.set('Consulta de ' + customer.name + ' lista para abrir.')">Ver detalle</button></td></tr>}</tbody></table></div></section>
+    }
+
+    @case ('compras') {
+      @if (supplierGroups().length) { <section class="supplier-order-grid">@for (group of supplierGroups(); track group.supplier) {<article class="panel supplier-order-card"><div><strong>{{ group.supplier }}</strong><small>{{ group.products.length }} producto{{ group.products.length === 1 ? '' : 's' }} bajo mínimo</small></div><button class="table-action" type="button" (click)="openForm(group.supplier)">Crear pedido</button><ul>@for (product of group.products; track product.id) {<li><span>{{ product.name }}</span><b>{{ state.availableStock(product) }} disponibles</b></li>}</ul></article>}</section> }
+      <section class="panel module-panel"><div class="module-toolbar"><div><h3>Pedidos por proveedor</h3><p class="muted">Cada pedido contiene una lista de productos del mismo proveedor.</p></div><div class="module-filters"><label class="sr-only" for="purchase-filter">Buscar pedido</label><input id="purchase-filter" class="text-field" [value]="filter()" (input)="filter.set($any($event.target).value)" placeholder="Número, proveedor, producto o estado" /></div></div><div class="table-wrap module-table-wrap"><table><thead><tr><th>Pedido</th><th>Proveedor</th><th>Productos incluidos</th><th class="align-right">Solicitado</th><th class="align-right">Recibido</th><th>Estado</th><th class="align-right">Acciones</th></tr></thead><tbody>@for (purchase of filteredPurchases; track purchase.id) {<tr><td class="numeric"><strong>{{ purchase.id }}</strong><small>{{ purchaseDate(purchase) }}</small></td><td>{{ purchase.supplier }}</td><td><strong>{{ purchase.lines.length }} producto(s)</strong><small>{{ purchaseProductNames(purchase) }}</small></td><td class="align-right numeric">{{ purchaseRequested(purchase) }}</td><td class="align-right numeric">{{ purchaseReceived(purchase) }}</td><td><span class="status-pill" [class.status-pill--warning]="purchase.status !== 'Recibida'">{{ purchase.status }}</span></td><td class="align-right"><button class="table-action" type="button" (click)="feedback.set('Pedido ' + purchase.id + ': ' + purchase.lines.length + ' productos de ' + purchase.supplier + '.')">Ver lista</button></td></tr>}</tbody></table></div></section>
+    }
+
+    @case ('reportes') {
+      <section class="panel panel--padded report-filter"><div><h3>Periodo del reporte</h3><p class="muted">Consulta ventas y caja por fecha operativa.</p></div><div class="report-filter__fields"><label class="field-label" for="date-from">Desde</label><input id="date-from" class="text-field" type="date" [value]="dateFrom()" (change)="dateFrom.set($any($event.target).value)" /><label class="field-label" for="date-to">Hasta</label><input id="date-to" class="text-field" type="date" [value]="dateTo()" (change)="dateTo.set($any($event.target).value)" /><button class="button button--secondary" type="button" (click)="executeAction()">Aplicar filtros</button></div></section>
+      <div class="metric-grid metric-grid--three"><article class="metric-card"><span>Ventas confirmadas</span><strong>17</strong><small>En el periodo</small></article><article class="metric-card"><span>Ingresos</span><strong>{{ format(dashboardTotal) }}</strong><small>Ventas con IVA incluido</small></article><article class="metric-card"><span>Ticket promedio</span><strong>{{ format(40265) }}</strong><small>Por operación</small></article></div>
+      <section class="panel module-panel"><div class="module-toolbar"><div><h3>Ventas por día</h3><p class="muted">Resumen para conciliación operativa.</p></div><button class="table-action" type="button" (click)="feedback.set('Exportación preparada en formato CSV.')">Exportar CSV</button></div><div class="table-wrap module-table-wrap"><table><thead><tr><th>Fecha operativa</th><th class="align-right">Ventas</th><th class="align-right">Unidades</th><th class="align-right">Total</th><th class="align-right">Medio principal</th></tr></thead><tbody><tr><td>07/09/2026</td><td class="align-right numeric">17</td><td class="align-right numeric">31</td><td class="align-right numeric">{{ format(dashboardTotal) }}</td><td class="align-right">Efectivo</td></tr><tr><td>06/09/2026</td><td class="align-right numeric">22</td><td class="align-right numeric">44</td><td class="align-right numeric">{{ format(892300) }}</td><td class="align-right">Tarjeta</td></tr><tr><td>05/09/2026</td><td class="align-right numeric">19</td><td class="align-right numeric">38</td><td class="align-right numeric">{{ format(741800) }}</td><td class="align-right">Transferencia</td></tr></tbody></table></div></section>
+    }
+
+    @case ('administracion') {
+      <section class="panel module-panel"><div class="module-toolbar"><div><h3>Usuarios y permisos</h3><p class="muted">Los roles parten de permisos normales y pueden ajustarse de forma granular.</p></div><button class="table-action" type="button" (click)="feedback.set('Permisos listos para editar por usuario o rol.')">Editar permisos</button></div><div class="table-wrap module-table-wrap"><table><thead><tr><th>Usuario</th><th>Usuario de acceso</th><th>Rol base</th><th>Estado</th><th class="align-right">Permisos</th></tr></thead><tbody>@for (user of state.users; track user.username) {<tr><td><strong>{{ user.name }}</strong></td><td>{{ user.username }}</td><td><span class="status-pill">{{ user.role }}</span></td><td class="success-text">Activo</td><td class="align-right"><button class="table-action" type="button" (click)="feedback.set('Permisos de ' + user.name + ' listos para editar.')">Configurar</button></td></tr>}</tbody></table></div></section>
+      <div class="module-columns"><section class="panel panel--padded"><div class="panel-heading"><h3>Roles base</h3><p>Se conservan como punto de partida para permisos granulares.</p></div><ul class="plain-list"><li><strong>Administrador</strong><span>Acceso completo y configuración</span></li><li><strong>Supervisor</strong><span>Operación, compras, reportes y autorizaciones</span></li><li><strong>Cajero</strong><span>Ventas, caja y clientes permitidos</span></li></ul></section><section class="panel panel--padded"><div class="panel-heading"><h3>Seguridad</h3><p>Controles que no dependen del rol visual.</p></div><ul class="plain-list"><li><strong>Bloqueo de sesión</strong><span>Conserva el turno y el carrito</span></li><li><strong>Autorización</strong><span>Solicita supervisor en acciones restringidas</span></li><li><strong>Auditoría</strong><span>Registra usuario, fecha y motivo</span></li></ul></section></div>
+    }
+
+    @case ('configuracion') {
+      <div class="module-columns module-columns--three"><section class="panel panel--padded config-card"><h3>Establecimiento</h3><p class="muted">Datos que aparecen en comprobantes y reportes.</p><label class="field-label" for="store-name">Nombre comercial</label><input id="store-name" class="text-field" value="Baratísimo" /><label class="field-label field-label--spaced" for="store-city">Ciudad</label><input id="store-city" class="text-field" value="Medellín" /><label class="field-label field-label--spaced" for="vat-rate">IVA predeterminado <span>(opcional)</span></label><input id="vat-rate" class="text-field" type="number" min="0" max="100" step="0.01" placeholder="Sin IVA predeterminado" [(ngModel)]="configVatRate" name="vatRate" /></section><section class="panel panel--padded config-card"><h3>Turno y caja</h3><p class="muted">Define cómo se asignan las operaciones en la terminal.</p><label class="field-label" for="shift-mode">Modo de turno</label><select id="shift-mode" class="text-field" [(ngModel)]="configShiftMode" name="shiftMode"><option [ngValue]="'INDIVIDUAL'">Turno individual</option><option [ngValue]="'COMPARTIDO'">Turno compartido</option></select><label class="field-label field-label--spaced" for="terminal-name">Terminal</label><input id="terminal-name" class="text-field" value="Caja 01" /><label class="field-label field-label--spaced" for="apartado-minimum">Mínimo inicial del apartado (%)</label><input id="apartado-minimum" class="text-field" type="number" min="1" max="100" step="1" [(ngModel)]="configApartadoMinimum" name="apartadoMinimum" /><label class="field-label field-label--spaced" for="apartado-days">Días límite del apartado <span>(opcional)</span></label><input id="apartado-days" class="text-field" type="number" min="1" max="365" step="1" placeholder="Sin límite" [(ngModel)]="configApartadoDays" name="apartadoDays" /><label class="field-label field-label--spaced" for="change-days">Plazo de cambios (días)</label><input id="change-days" class="text-field" type="number" min="1" max="365" step="1" [(ngModel)]="configChangeDays" name="changeDays" /></section><section class="panel panel--padded config-card"><h3>Impresión</h3><p class="muted">La impresora térmica podrá emitir recibos y etiquetas.</p><label class="field-label" for="printer">Impresora configurada</label><select id="printer" class="text-field"><option>Seleccionar al instalar</option><option>Impresora térmica recibo + etiquetas</option></select><dl class="fixed-format-list"><div><dt>Etiqueta de producto</dt><dd>EAN-13</dd></div><div><dt>Credencial</dt><dd>Code 128</dd></div></dl><p class="muted config-note">El tamaño de etiqueta se define al instalar la impresora.</p></section></div>
+      @if (configSaveError) { <p class="field-error" role="alert">{{ configSaveError }}</p> }
+    }
+
+    @case ('soporte') {
+      <div class="metric-grid metric-grid--three"><article class="metric-card"><span>Servidor local</span><strong class="success-text">Disponible</strong><small>Respuesta 42 ms</small></article><article class="metric-card"><span>Base de datos</span><strong class="success-text">Conectada</strong><small>Última sincronización 10:02</small></article><article class="metric-card"><span>Último respaldo</span><strong>09:30</strong><small>RPO configurado: 30 min</small></article></div><div class="module-columns"><section class="panel panel--padded"><div class="panel-heading"><h3>Respaldos</h3><p>Conserva una copia local antes de mantenimiento o cierre.</p></div><div class="support-row"><span><strong>Respaldo de hoy</strong><small>07/09/2026 · 09:30 · 18,4 MB</small></span><button class="table-action" type="button" (click)="feedback.set('Respaldo verificado correctamente.')">Verificar</button></div><div class="support-row"><span><strong>Respaldo anterior</strong><small>07/09/2026 · 09:00 · 18,1 MB</small></span><button class="table-action" type="button" (click)="feedback.set('Restauración disponible bajo autorización.')">Revisar</button></div></section><section class="panel panel--padded"><div class="panel-heading"><h3>Diagnóstico</h3><p>Estado de los servicios que usa la operación.</p></div><ul class="plain-list"><li><strong>Cola de impresión</strong><span class="success-text">Sin pendientes</span></li><li><strong>Almacenamiento</strong><span>68 % utilizado</span></li><li><strong>Registro de auditoría</strong><span class="success-text">Activo</span></li></ul></section></div>
+    }
+  }
+</section>

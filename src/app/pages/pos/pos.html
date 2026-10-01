@@ -1,0 +1,236 @@
+<div class="pos-grid">
+  <section class="panel pos-main">
+    <div class="pos-heading">
+      <div>
+        <h2>Nueva venta</h2>
+        <p><strong>Operador: {{ state.user()?.name }}</strong> · Caja abierta desde {{ openedTime }}</p>
+      </div>
+      <span class="badge badge--info">{{ state.shiftMode() === 'COMPARTIDO' ? 'Turno compartido' : 'Turno individual' }}</span>
+    </div>
+
+    <div class="search-area">
+    <form class="scanner" (ngSubmit)="scan()">
+      <label class="field-label" for="product-search">Buscar producto o leer código de barras</label>
+      <div class="scanner__field">
+        <input
+          #productSearch
+          id="product-search"
+          [formControl]="search"
+          (input)="filterCatalog($any($event.target).value)"
+          placeholder="Escanee o escriba código, nombre o referencia"
+          autocomplete="off"
+          autofocus
+        />
+        <button type="button" class="catalog-toggle" (click)="toggleCatalog()" [attr.aria-expanded]="matches().length > 0" aria-controls="catalog-results">Ver productos</button>
+        <button type="submit">Agregar · Enter</button>
+        <kbd>F2</kbd>
+      </div>
+    </form>
+    @if (matches().length) {
+      <div id="catalog-results" class="search-results" aria-label="Resultados de búsqueda">
+        @for (product of matches(); track product.id) {
+          <button class="catalog-result" type="button" (click)="add(product)">
+            <span><strong>{{ product.name }}</strong><small>{{ product.code }} · {{ product.category }}</small></span>
+            <b>{{ state.formatCop(product.price) }}</b>
+          </button>
+        }
+      </div>
+    }
+    </div>
+
+    @if (feedback()) {
+    <div
+      class="inline-feedback"
+      [class.inline-feedback--success]="feedbackKind() === 'success'"
+      [class.inline-feedback--error]="feedbackKind() === 'error'"
+      role="status"
+      aria-live="polite"
+    >
+      <span aria-hidden="true">{{ feedbackKind() === 'error' ? '!' : feedbackKind() === 'success' ? '✓' : 'i' }}</span>
+      {{ feedback() }}
+    </div>
+    }
+
+    <div class="table-wrap cart-table" role="region" aria-label="Productos de la venta" tabindex="0">
+      <table aria-label="Carrito de venta">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th class="align-right">Cant.</th>
+            <th class="align-right">Precio</th>
+            <th class="align-right">Desc.</th>
+            <th class="align-right">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (line of state.cart(); track line.product.id) {
+            <tr
+              tabindex="0"
+              [attr.data-product-id]="line.product.id"
+              [class.is-selected]="state.selectedProductId() === line.product.id"
+              (click)="state.selectProduct(line.product.id)"
+              (focusin)="state.selectProduct(line.product.id)"
+            >
+              <td>
+                <strong>{{ line.product.name }}</strong>
+                <small>{{ line.product.code }} · {{ line.product.unit }}</small>
+              </td>
+              <td class="align-right">
+                <span class="quantity-control">
+                  <input [id]="'quantity-' + line.product.id" type="number" min="1" step="1" [max]="state.availableStock(line.product)" [value]="line.quantity" (change)="setQuantity(line.product.id, $any($event.target).valueAsNumber, $event)" [attr.aria-label]="'Cantidad de ' + line.product.name" />
+                </span>
+              </td>
+              <td class="align-right numeric">{{ state.formatCop(line.product.price) }}</td>
+              <td class="align-right numeric">{{ state.formatCop(line.discount) }}</td>
+              <td class="align-right numeric"><strong>{{ state.formatCop(lineSubtotal(line.product.id)) }}</strong></td>
+            </tr>
+          } @empty {
+            <tr class="empty-row">
+              <td colspan="5">
+                <span aria-hidden="true">▤</span>
+                <strong>La venta está vacía</strong>
+                <small>Escanea un código o busca un producto.</small>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="pos-footer">
+    <div class="cart-actions">
+      <button class="button button--secondary" type="button" (click)="focusQuantity()">Cantidad · F4</button>
+      <button class="button button--secondary" type="button" (click)="openDiscount('product')">Desc. producto</button>
+      <button class="button button--secondary" type="button" (click)="openDiscount('sale')">Desc. venta total</button>
+      <button class="button button--secondary" type="button" (click)="removeSelected()">Quitar · Supr</button>
+    </div>
+
+    <div class="customer-row">
+      <label class="field-label" for="customer-selector">Cliente <span>(opcional para venta normal)</span></label>
+      <button id="customer-selector" class="customer-selector" type="button" (click)="openCustomerPicker()">
+        <span><strong>{{ customer() }}</strong><small>{{ selectedCustomer()?.document ?? 'Sin documento asociado' }}</small></span>
+        <b>Buscar o crear · F3</b>
+      </button>
+    </div>
+    </footer>
+
+    @if (showCustomer()) {
+      <div class="discount-sheet" role="dialog" aria-modal="true" aria-labelledby="customer-picker-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true">
+        <div class="discount-sheet__backdrop" (click)="closeCustomerPicker()"></div>
+        <section class="discount-sheet__card customer-picker">
+          <div class="panel-heading">
+            <h2 id="customer-picker-title">{{ customerPickerTitle }}</h2>
+            <p>Busca por nombre o número de cédula/NIT, o registra el cliente sin salir del punto de venta.</p>
+          </div>
+          @if (!customerFormMode()) {
+            <label class="field-label" for="customer-search-pos">Nombre o número de cédula/NIT</label>
+            <input id="customer-search-pos" class="text-field" [value]="customerSearch()" (input)="customerSearch.set($any($event.target).value)" placeholder="Ej. 52418903 o Laura Martínez" autocomplete="off" cdkFocusInitial />
+            <div class="customer-results" role="listbox" aria-label="Clientes encontrados">
+              @for (candidate of customerMatches(); track candidate.id) {
+                <button type="button" class="customer-result" (click)="selectCustomer(candidate)">
+                  <span><strong>{{ candidate.name }}</strong><small>{{ candidate.document }} · {{ candidate.phone || 'Sin teléfono' }}</small></span>
+                  <small>{{ candidate.address || 'Sin dirección' }}</small>
+                </button>
+              } @empty {
+                <p class="empty-customer-result">No hay clientes que coincidan con la búsqueda.</p>
+              }
+            </div>
+            <div class="form-actions customer-picker__actions">
+              @if (!customerSelectionRequired) { <button class="button button--secondary" type="button" (click)="selectConsumerFinal()">Usar consumidor final</button> }
+              <button class="button button--primary" type="button" (click)="customerFormMode.set(true); customerError.set('')">+ Nuevo cliente</button>
+            </div>
+          } @else {
+            <form class="customer-create-form" (ngSubmit)="createCustomer()" novalidate>
+              <label class="field-label" for="customer-name-pos">Nombre completo o razón social</label><input id="customer-name-pos" class="text-field" name="customerNamePos" [(ngModel)]="customerName" (input)="customerName = $any($event.target).value" required cdkFocusInitial />
+              <label class="field-label field-label--spaced" for="customer-document-pos">Número de cédula o NIT</label><input id="customer-document-pos" class="text-field" name="customerDocumentPos" [(ngModel)]="customerDocument" (input)="customerDocument = $any($event.target).value" required />
+              <label class="field-label field-label--spaced" for="customer-phone-pos">Teléfono <span>(opcional)</span></label><input id="customer-phone-pos" class="text-field" name="customerPhonePos" [(ngModel)]="customerPhone" (input)="customerPhone = $any($event.target).value" />
+              <label class="field-label field-label--spaced" for="customer-address-pos">Dirección <span>(opcional)</span></label><input id="customer-address-pos" class="text-field" name="customerAddressPos" [(ngModel)]="customerAddress" (input)="customerAddress = $any($event.target).value" />
+              @if (customerError()) { <p class="field-error" role="alert">{{ customerError() }}</p> }
+              <div class="form-actions customer-picker__actions"><button class="button button--secondary" type="button" (click)="customerFormMode.set(false); customerError.set('')">Volver a buscar</button><button class="button button--primary" type="submit">Guardar y seleccionar</button></div>
+            </form>
+          }
+        </section>
+      </div>
+    }
+
+    @if (showDiscount()) {
+      <div class="discount-sheet" role="dialog" aria-modal="true" aria-labelledby="discount-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true">
+        <div class="discount-sheet__backdrop" (click)="showDiscount.set(false)"></div>
+        <form class="discount-sheet__card" (ngSubmit)="applyDiscount()" novalidate>
+          <div class="panel-heading">
+            <h2 id="discount-title">Descuento {{ discountScope() === 'product' ? 'del producto' : 'de la venta total' }}</h2>
+            <p>{{ discountTarget }}</p>
+            @if (discountScope() === 'product' && state.saleDiscount() > 0) { <p>Se reemplazará el descuento aplicado a la venta total.</p> }
+            @if (discountScope() === 'sale' && state.lineDiscountTotal() > 0) { <p>Se reemplazarán los descuentos aplicados por producto.</p> }
+          </div>
+          <label class="field-label" for="discount-amount">Valor del descuento</label>
+          <div class="money-field">
+            <span>$</span>
+            <input id="discount-amount" type="number" min="0" step="1" [value]="discountAmount()" (input)="discountAmount.set($any($event.target).valueAsNumber)" cdkFocusInitial />
+            <b>COP</b>
+          </div>
+          <label class="field-label field-label--spaced" for="discount-reason">Motivo <span>(opcional)</span></label>
+          <input id="discount-reason" class="text-field" [value]="discountReason()" (input)="discountReason.set($any($event.target).value)" placeholder="Ej. empaque deteriorado" maxlength="500" />
+          @if (discountError()) { <p class="field-error" role="alert">{{ discountError() }}</p> }
+          <div class="form-actions">
+            <button class="button button--secondary" type="button" (click)="showDiscount.set(false)">Cancelar</button>
+            <button class="button button--primary" type="submit">Aplicar descuento</button>
+          </div>
+        </form>
+      </div>
+    }
+    @if (showCancel()) {
+      <div class="discount-sheet" role="dialog" aria-modal="true" aria-labelledby="cancel-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true">
+        <div class="discount-sheet__backdrop"></div>
+        <section class="discount-sheet__card">
+          <h2 id="cancel-title">¿Cancelar esta venta?</h2>
+          <p>Se retirarán {{ state.cart().length }} productos del carrito, por {{ state.formatCop(state.total()) }}. No hay un cobro registrado.</p>
+          <div class="form-actions">
+            <button class="button button--secondary" type="button" (click)="showCancel.set(false)" cdkFocusInitial>Continuar venta</button>
+            <button class="button button--danger" type="button" (click)="cancelSale()">Confirmar cancelación</button>
+          </div>
+        </section>
+      </div>
+    }
+    @if (showApartado()) {
+      <div class="discount-sheet" role="dialog" aria-modal="true" aria-labelledby="apartado-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true">
+        <div class="discount-sheet__backdrop" (click)="showApartado.set(false)"></div>
+        <form class="discount-sheet__card" (ngSubmit)="submitApartado()" novalidate>
+          <div class="panel-heading">
+            <h2 id="apartado-title">Crear apartado</h2>
+            <p>{{ customer() }} · {{ state.formatCop(state.total()) }}</p>
+            <dl class="apartado-minimum-row"><dt>Mínimo inicial ({{ state.apartadoMinimumPercent() }} %)</dt><dd>{{ state.formatCop(state.total() * state.apartadoMinimumPercent() / 100) }}</dd></dl>
+          </div>
+          <label class="field-label" for="apartado-initial-pos">Abono inicial</label>
+          <div class="money-field"><span>$</span><input id="apartado-initial-pos" type="number" min="1" step="1" [value]="apartadoInitial()" (input)="apartadoInitial.set($any($event.target).valueAsNumber)" cdkFocusInitial /><b>COP</b></div>
+          <label class="field-label field-label--spaced" for="apartado-notes-pos">Observación <span>(opcional)</span></label>
+          <textarea id="apartado-notes-pos" class="text-field textarea" rows="2" [value]="apartadoNotes()" (input)="apartadoNotes.set($any($event.target).value)" placeholder="Dato útil para la entrega"></textarea>
+          @if (apartadoError()) { <p class="field-error" role="alert">{{ apartadoError() }}</p> }
+          <div class="form-actions"><button class="button button--secondary" type="button" (click)="showApartado.set(false)">Cancelar</button><button class="button button--primary" type="submit">Guardar apartado</button></div>
+        </form>
+      </div>
+    }
+  </section>
+
+  <aside class="panel summary-card">
+    <div class="panel-heading">
+      <h2>Resumen</h2>
+    </div>
+    <dl class="totals-list">
+      <div><dt>Subtotal</dt><dd>{{ state.formatCop(state.subtotal()) }}</dd></div>
+      <div><dt>Descuentos</dt><dd class="success-text">-{{ state.formatCop(state.discountTotal()) }}</dd></div>
+      <div><dt>IVA incluido</dt><dd>{{ state.formatCop(state.vatIncluded()) }}</dd></div>
+    </dl>
+    <div class="grand-total"><span>TOTAL</span><strong>{{ state.formatCop(state.total()) }}</strong></div>
+    <div class="summary-units">
+      <strong>{{ state.cart().length }} productos</strong>
+      <span>Precios finales con IVA incluido</span>
+    </div>
+    <button class="button button--primary button--full summary-card__charge" type="button" (click)="goToCheckout()" [disabled]="state.cart().length === 0">Cobrar · F9</button>
+    <div class="summary-card__alternatives">
+      <button class="button button--secondary" type="button" (click)="startCreditSale()" [disabled]="state.cart().length === 0">Registrar crédito</button>
+      <button class="button button--secondary" type="button" (click)="openApartado()" [disabled]="state.cart().length === 0">Crear apartado</button>
+    </div>
+    <button class="link-button" type="button" (click)="showCancel.set(true)" [disabled]="!state.cart().length">Cancelar venta</button>
+  </aside>
+</div>

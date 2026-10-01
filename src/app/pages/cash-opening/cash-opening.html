@@ -1,0 +1,73 @@
+@if (state.cashOpen()) {
+  <section class="panel panel--padded open-turn-summary">
+    <h2>Turno individual abierto</h2>
+    <p>Responsable: <strong>{{ state.cashOwner()?.name }}</strong></p>
+    <p>Fondo inicial: <strong>{{ state.formatCop(state.openingAmount()) }}</strong></p>
+    <div class="form-actions"><a class="button button--secondary" routerLink="/operacion/ventas/nueva">Continuar venta</a><a class="button button--primary" routerLink="/operacion/caja/cierre">Cerrar caja</a></div>
+  </section>
+} @else {
+<div class="opening-grid">
+  <form class="panel panel--padded opening-form" [formGroup]="form" (ngSubmit)="open()">
+    <div class="panel-heading">
+      <h2>Apertura de caja</h2>
+    </div>
+
+    <div class="form-grid form-grid--two">
+      <div>
+        <label class="field-label" for="terminal">Terminal</label>
+        <input id="terminal" class="text-field text-field--readonly" value="CAJA-01" readonly />
+      </div>
+      <div>
+        <label class="field-label" for="responsible">Responsable</label>
+        <input id="responsible" class="text-field text-field--readonly" [value]="state.user()?.name ?? 'Operador'" readonly />
+      </div>
+      <div>
+        <label class="field-label" for="date">Fecha operativa</label>
+        <input id="date" class="text-field text-field--readonly" [value]="operationDate" readonly />
+      </div>
+      <div>
+        <label class="field-label" for="initial-amount">Fondo inicial</label>
+        <div class="money-field">
+          <span>$</span>
+          <input
+            id="initial-amount"
+            type="number"
+            min="0"
+            step="1"
+            formControlName="initialAmount"
+            inputmode="numeric"
+            autofocus
+          />
+          <b>COP</b>
+        </div>
+        @if (form.controls.initialAmount.touched && form.controls.initialAmount.invalid) {
+          <p class="field-error">Ingresa un valor válido, incluso si es cero.</p>
+        }
+      </div>
+    </div>
+
+    <label class="field-label field-label--spaced" for="opening-notes">Observaciones <span>(opcional)</span></label>
+    <textarea id="opening-notes" class="text-field textarea" formControlName="notes" rows="2" maxlength="500"></textarea>
+    @if (errorMessage()) { <p class="field-error" role="alert">{{ errorMessage() }}</p> }
+
+
+    <div class="form-actions">
+      <button class="button button--secondary" type="button" (click)="cancel()">Cancelar</button>
+      <button class="button button--primary" type="submit">Abrir caja</button>
+    </div>
+  </form>
+
+  <aside class="panel panel--padded terminal-card" aria-labelledby="terminal-status-title">
+    <div class="panel-heading">
+      <h2 id="terminal-status-title">Datos del turno</h2>
+    </div>
+    <dl class="status-list">
+      <div><dt>Establecimiento</dt><dd>Baratísimo</dd></div>
+      <div><dt>Caja</dt><dd>CAJA-01</dd></div>
+      <div><dt>Estado</dt><dd class="badge badge--warning">Cerrada</dd></div>
+      <div><dt>Modo de turno</dt><dd>Individual</dd></div>
+      <div><dt>Moneda</dt><dd>COP</dd></div>
+    </dl>
+  </aside>
+</div>
+}

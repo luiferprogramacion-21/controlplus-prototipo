@@ -1,0 +1,37 @@
+@if (submitted() && state.cashClosure(); as closure) {
+  <section class="panel panel--padded closure-result">
+    <div class="closure-result__icon" aria-hidden="true">✓</div>
+    <h2>Caja cerrada</h2>
+    <p class="muted">{{ closure.number }} · {{ closure.closedAt | date:'long' }}</p>
+    <dl class="closure-summary">
+      <div><dt>Saldo esperado</dt><dd>{{ state.formatCop(closure.expected) }}</dd></div>
+      <div><dt>Valor contado</dt><dd>{{ state.formatCop(closure.counted) }}</dd></div>
+      <div [class.closure-summary__difference--negative]="closure.difference < 0" [class.closure-summary__difference--positive]="closure.difference > 0"><dt>Diferencia</dt><dd>{{ state.formatCop(closure.difference) }}</dd></div>
+      <div><dt>Responsable</dt><dd>{{ closure.operator }}</dd></div>
+    </dl>
+    @if (closure.reason) { <p class="notice notice--warning"><strong>Motivo registrado</strong><span>{{ closure.reason }}{{ closure.notes ? ' · ' + closure.notes : '' }}</span></p> }
+    <div class="form-actions"><button class="button button--primary" type="button" (click)="goToOpening()">Abrir nuevo turno</button></div>
+  </section>
+} @else {
+  <div class="closing-grid">
+    <form class="panel panel--padded closing-form" [formGroup]="form" (ngSubmit)="close()" novalidate>
+      <div class="panel-heading"><h2>Cierre de caja</h2><p>Compara el efectivo físico con el saldo calculado por el sistema.</p></div>
+      <div class="expected-cash-card"><span>SALDO ESPERADO EN EFECTIVO</span><strong>{{ state.formatCop(state.cashExpected()) }}</strong><small>Incluye fondo, ventas y movimientos del turno.</small></div>
+      <label class="field-label field-label--spaced" for="counted-cash">Efectivo contado</label>
+      <div class="money-field"><span>$</span><input id="counted-cash" type="number" min="0" step="1" formControlName="countedCash" inputmode="numeric" autofocus /><b>COP</b></div>
+      @if (form.controls.countedCash.touched && form.controls.countedCash.invalid) { <p class="field-error">Ingresa un valor entero mayor o igual a cero.</p> }
+      @if (form.controls.countedCash.dirty) {
+        <div class="closure-live-difference" [class.closure-live-difference--negative]="currentDifference < 0" [class.closure-live-difference--positive]="currentDifference > 0"><span>Diferencia actual</span><strong>{{ state.formatCop(currentDifference) }}</strong></div>
+      } @else {
+        <p class="field-hint closure-count-hint">La diferencia aparecerá mientras escribes el efectivo contado.</p>
+      }
+      <label class="field-label field-label--spaced" for="closure-reason">Motivo del descuadre <span>(solo si existe diferencia)</span></label>
+      <select id="closure-reason" class="text-field" formControlName="reason"><option value="">Seleccionar cuando aplique</option><option>Conteo de efectivo</option><option>Gasto no registrado</option><option>Sangría no registrada</option><option>Otro motivo operativo</option></select>
+      <label class="field-label field-label--spaced" for="closure-notes">Observación <span>(opcional)</span></label>
+      <textarea id="closure-notes" class="text-field textarea" formControlName="notes" rows="3" maxlength="500"></textarea>
+      @if (errorMessage()) { <p class="field-error" role="alert">{{ errorMessage() }}</p> }
+      <div class="form-actions"><a class="button button--secondary" routerLink="/operacion/ventas/nueva">Volver a la venta</a><button class="button button--primary" type="submit">Cerrar caja</button></div>
+    </form>
+    <aside class="panel panel--padded terminal-card"><div class="panel-heading"><h2>Resumen del turno</h2><p>Valores que forman el saldo esperado.</p></div><dl class="status-list"><div><dt>Responsable</dt><dd>{{ state.cashOwner()?.name }}</dd></div><div><dt>Fondo inicial</dt><dd>{{ state.formatCop(state.openingAmount()) }}</dd></div><div><dt>Ventas en efectivo</dt><dd>{{ state.formatCop(state.cashSales()) }}</dd></div><div><dt>Ingresos y abonos</dt><dd>{{ state.formatCop(state.cashIncomes()) }}</dd></div><div><dt>Gastos y sangrías</dt><dd>-{{ state.formatCop(state.cashExpenses()) }}</dd></div><div><dt>Saldo esperado</dt><dd><strong>{{ state.formatCop(state.cashExpected()) }}</strong></dd></div><div><dt>Estado</dt><dd class="badge badge--success">Abierto</dd></div></dl></aside>
+  </div>
+}

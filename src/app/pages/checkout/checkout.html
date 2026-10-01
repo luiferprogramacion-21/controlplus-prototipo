@@ -1,0 +1,101 @@
+<div class="checkout-grid">
+  <form class="panel panel--padded checkout-main" (ngSubmit)="confirm()" novalidate>
+    <div class="checkout-heading">
+      <div class="panel-heading">
+        <h2>Cobro de la venta</h2>
+      </div>
+      <div class="amount-due"><span>Total a cobrar</span><strong>{{ state.formatCop(state.total()) }}</strong></div>
+    </div>
+
+    <div class="change-highlight" [class.change-highlight--active]="change > 0" role="status" aria-live="polite">
+      <span>CAMBIO A DEVOLVER</span>
+      <strong>{{ state.formatCop(change) }}</strong>
+      <small>{{ change > 0 ? 'Entregar al cliente' : 'Sin cambio' }}</small>
+    </div>
+
+    <div class="payment-toolbar">
+      <span class="badge" [class.badge--success]="remaining === 0" [class.badge--warning]="remaining !== 0">
+        {{ remaining >= 0 ? 'Faltante' : 'Excede' }} {{ state.formatCop(remaining < 0 ? -remaining : remaining) }}
+      </span>
+      <button class="button button--secondary" type="button" (click)="addPayment()" [disabled]="payments().length >= 3 || processing()">+ Pago mixto</button>
+    </div>
+    <div class="payment-list">
+      @for (payment of payments(); track payment.id; let index = $index) {
+        <fieldset class="payment-card" [disabled]="processing()">
+          <legend>Medio {{ index + 1 }}</legend>
+          <div class="payment-card__grid">
+            <div>
+              <label class="field-label" [for]="'method-' + payment.id">Medio</label>
+              <select class="text-field" [id]="'method-' + payment.id" [value]="payment.method" (change)="setMethod(payment.id, $any($event.target).value)">
+                @for (method of methods; track method) { <option [value]="method" [disabled]="methodUsed(method, payment.id)">{{ method }}</option> }
+              </select>
+            </div>
+            @if (payment.method === 'Efectivo') {
+              <div>
+                <label class="field-label" [for]="'received-' + payment.id">Efectivo entregado</label>
+                <div class="money-field">
+                  <span>$</span>
+                  <input [id]="'received-' + payment.id" type="number" min="0" step="1" [value]="payment.received" (input)="setReceived(payment.id, $any($event.target).valueAsNumber)" />
+                  <b>COP</b>
+                </div>
+                <button class="small-action" type="button" (click)="useExactCash(payment.id)">Efectivo exacto</button>
+              </div>
+              <div class="payment-result">
+                <span>Aporta a la venta</span>
+                <strong>{{ state.formatCop(payment.amount) }}</strong>
+                <small>Cambio: {{ state.formatCop(payment.received - payment.amount > 0 ? payment.received - payment.amount : 0) }}</small>
+              </div>
+            } @else {
+              <div>
+                <label class="field-label" [for]="'amount-' + payment.id">Monto con este medio</label>
+                <div class="money-field">
+                  <span>$</span>
+                  <input [id]="'amount-' + payment.id" type="number" min="1" step="1" [value]="payment.amount" (input)="setAmount(payment.id, $any($event.target).valueAsNumber)" />
+                  <b>COP</b>
+                </div>
+                <button class="small-action" type="button" (click)="useRemaining(payment.id)">Usar saldo pendiente</button>
+              </div>
+            }
+            @if (payment.method === 'Transferencia' || payment.method === 'Nequi') {
+              <div class="payment-card__wide">
+                <label class="field-label" [for]="'reference-' + payment.id">Referencia de {{ payment.method.toLowerCase() }}</label>
+                <input class="text-field" [id]="'reference-' + payment.id" [value]="payment.reference" (input)="setReference(payment.id, $any($event.target).value)" placeholder="Número o referencia" maxlength="100" />
+              </div>
+            }
+          </div>
+          @if (payments().length > 1) {
+            <button class="payment-card__remove" type="button" (click)="removePayment(payment.id)" [attr.aria-label]="'Quitar medio ' + payment.method">Quitar medio</button>
+          }
+        </fieldset>
+      }
+    </div>
+
+    @if (errorMessage()) {
+      <p id="payment-error" class="inline-feedback inline-feedback--error" role="alert"><span>!</span>{{ errorMessage() }}</p>
+    }
+
+    <div class="form-actions checkout-actions">
+      <button class="button button--secondary" type="button" (click)="goBack()" [disabled]="processing()">Volver · Esc</button>
+      <button class="button button--primary checkout-confirm" type="submit" [disabled]="processing()">
+        {{ processing() ? 'Procesando…' : 'Confirmar venta · Enter' }}
+      </button>
+    </div>
+  </form>
+
+  <aside class="panel panel--padded review-card">
+    <div class="panel-heading">
+      <h2>Resumen de la venta</h2>
+    </div>
+    <dl class="review-list">
+      <div><dt>Subtotal</dt><dd>{{ state.formatCop(state.subtotal()) }}</dd></div>
+      <div><dt>Descuento</dt><dd>-{{ state.formatCop(state.discountTotal()) }}</dd></div>
+      <div><dt>IVA incluido</dt><dd>{{ state.formatCop(state.vatIncluded()) }}</dd></div>
+      <div class="review-list__total"><dt>Total</dt><dd>{{ state.formatCop(state.total()) }}</dd></div>
+    </dl>
+    <dl class="review-meta">
+      <div><dt>Cliente</dt><dd>{{ state.customer() }}</dd></div>
+      <div><dt>Operador</dt><dd>{{ state.user()?.name }}</dd></div>
+      <div><dt>Cambio</dt><dd class="success-text">{{ state.formatCop(change) }}</dd></div>
+    </dl>
+  </aside>
+</div>

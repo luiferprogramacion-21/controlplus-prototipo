@@ -1,0 +1,43 @@
+<section class="panel success-page">
+  <div class="panel-heading success-page__heading">
+    <h2>Venta confirmada</h2>
+  </div>
+  @if (state.completedSale(); as sale) {
+    <div class="success-check" aria-hidden="true">✓</div>
+    <h3>{{ sale.number }}</h3>
+    <p class="muted">{{ formatDate(sale.createdAt) }}</p>
+
+    <dl class="success-summary">
+      <div><dt>{{ sale.payments.length ? 'Total pagado' : 'Total a crédito' }}</dt><dd>{{ state.formatCop(sale.total) }}</dd></div>
+      <div><dt>Cambio</dt><dd class="success-text">{{ state.formatCop(sale.change) }}</dd></div>
+    </dl>
+
+    <p class="badge badge--success print-status" role="status">
+      {{ printed() ? '✓ Comprobante listo' : 'Preparando comprobante…' }}
+    </p>
+    @if (printError()) { <p class="field-error" role="alert">{{ printError() }}</p> }
+
+    @if (showDetail()) {
+      <div class="table-wrap receipt-lines">
+        <table aria-label="Detalle de productos vendidos">
+          <thead><tr><th>Producto</th><th class="align-right">Cantidad</th><th class="align-right">Subtotal</th></tr></thead>
+          <tbody>@for (line of sale.lines; track line.product.id) { <tr><td>{{ line.product.name }}</td><td class="align-right">{{ line.quantity }}</td><td class="align-right">{{ state.formatCop(line.product.price * line.quantity - line.discount) }}</td></tr> }</tbody>
+        </table>
+      </div>
+      <dl class="sale-detail">
+        <div><dt>Cliente</dt><dd>{{ sale.customer }}</dd></div>
+        <div><dt>Operador</dt><dd>{{ sale.operator }}</dd></div>
+        <div><dt>Productos</dt><dd>{{ sale.itemCount }}</dd></div>
+        <div><dt>Unidades</dt><dd>{{ sale.unitCount }}</dd></div>
+        <div><dt>IVA incluido</dt><dd>{{ state.formatCop(sale.vatIncluded) }}</dd></div>
+        @for (payment of sale.payments; track payment.method) { <div><dt>{{ payment.method }}</dt><dd>{{ state.formatCop(payment.amount) }}</dd></div> }
+      </dl>
+    }
+
+    <div class="success-actions">
+      <button class="button button--secondary" type="button" (click)="reprint()" [disabled]="!printed()">Reimprimir</button>
+      <button class="button button--secondary" type="button" (click)="showDetail.set(!showDetail())">{{ showDetail() ? 'Ocultar detalle' : 'Ver detalle' }}</button>
+      <button id="new-sale" class="button button--primary" type="button" (click)="newSale()">Nueva venta · Enter</button>
+    </div>
+  }
+</section>

@@ -1,0 +1,51 @@
+<main class="login-page">
+  <section class="login-hero" aria-labelledby="product-name">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true">+</span>
+      <strong id="product-name">ControlPlus</strong>
+    </div>
+    <div class="login-hero__copy">
+      <h1>Control diario,<br />decisiones claras.</h1>
+      <p>Ventas, inventario, caja y relaciones comerciales<br />en una plataforma local diseñada para el negocio.</p>
+    </div>
+    <p class="login-hero__status"><i></i>Servidor local disponible</p>
+  </section>
+
+  <section class="login-form-area">
+    <form class="login-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <h2>Bienvenido</h2>
+      <p class="muted">Ingresa para iniciar o supervisar la operación.</p>
+
+      <label class="field-label" for="username">Usuario</label>
+      <input id="username" class="text-field" formControlName="username" autocomplete="username" />
+      @if (form.controls.username.touched && form.controls.username.invalid) {
+        <p class="field-error">Escribe el usuario.</p>
+      }
+
+      <label class="field-label field-label--spaced" for="password">Contraseña</label>
+      <div class="password-field">
+        <input
+          id="password"
+          class="text-field"
+          [type]="showPassword() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="current-password"
+        />
+        <button type="button" (click)="showPassword.set(!showPassword())">
+          {{ showPassword() ? 'Ocultar' : 'Mostrar' }}
+        </button>
+      </div>
+      @if (form.controls.password.touched && form.controls.password.invalid) {
+        <p class="field-error">Escribe la contraseña.</p>
+      }
+
+      <button class="button button--primary button--full login-form__submit" type="submit">
+        Ingresar · Enter
+      </button>
+      @if (errorMessage()) { <p class="field-error" role="alert">{{ errorMessage() }}</p> }
+
+      <p class="login-help">¿Problemas para ingresar? Solicita ayuda al administrador.</p>
+      <p class="login-version">Baratísimo · CAJA-01</p>
+    </form>
+  </section>
+</main>
